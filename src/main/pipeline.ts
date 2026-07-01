@@ -1,6 +1,7 @@
 import { Recorder } from './recorder'
 import { Overlay } from './overlay'
 import { buildSttEngine } from './providers/stt'
+import { transcribeLocal } from './providers/localWhisper'
 import { buildLlmEngine } from './providers/llm'
 import { injectText } from './inject'
 import { getSection } from './settings'
@@ -55,10 +56,21 @@ export class Pipeline {
     if (!clip || clip.buffer.length < 1200) return this.fail('No audio captured')
 
     try {
-      const stt = buildSttEngine()
-      dbg(`[pipeline] transcribing via ${stt.id}`)
-      const engineId = stt.id
-      let text = (await stt.transcribe(clip.buffer, clip.mime)).text
+      const sttCfg = getSection('stt')
+      let engineId: string
+      let text: string
+      if (sttCfg.provider === 'local') {
+        engineId = `local:${sttCfg.localModel}`
+        dbg('[pipeline] transcribing locally (whisper.cpp)')
+        text = await transcribeLocal(clip.buffer, sttCfg.localModel, (msg) =>
+          this.overlay.set('processing', msg)
+        )
+      } else {
+        const stt = buildSttEngine()
+        engineId = stt.id
+        dbg(`[pipeline] transcribing via ${stt.id}`)
+        text = (await stt.transcribe(clip.buffer, clip.mime)).text
+      }
       dbg(`[pipeline] transcript: ${text.length} chars`)
       if (this.aborted) return this.reset()
       if (!text) return this.fail('No speech detected')

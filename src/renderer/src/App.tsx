@@ -11,7 +11,13 @@ interface AppInfo {
 interface PublicSettings {
   general: { launchOnStartup: boolean; activationMode: string }
   hotkey: { pttModifiers: string[] }
-  stt: { provider: 'groq' | 'openai'; groqModel: string; openaiModel: string; language: string }
+  stt: {
+    provider: 'groq' | 'openai' | 'local'
+    groqModel: string
+    openaiModel: string
+    localModel: string
+    language: string
+  }
   llm: {
     enabled: boolean
     provider: 'openai' | 'groq' | 'ollama'
@@ -105,6 +111,9 @@ export default function App() {
   const [status, setStatus] = useState<StatusPayload>({ state: 'idle' })
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [ollamaMsg, setOllamaMsg] = useState('')
+  const [localSt, setLocalSt] = useState<{ engine: boolean; model: boolean } | null>(null)
+  const [localMsg, setLocalMsg] = useState('')
+  const [localBusy, setLocalBusy] = useState(false)
 
   const loadHistory = useCallback(async () => {
     setHistory(await window.codeflow.getHistory())
@@ -122,8 +131,18 @@ export default function App() {
       setStatus(s)
       if (s.state === 'done') void loadHistory()
     })
-    return off
+    const offLocal = window.codeflow.onLocalProgress((m) => setLocalMsg(m))
+    return () => {
+      off()
+      offLocal()
+    }
   }, [refresh, loadHistory])
+
+  useEffect(() => {
+    if (settings?.stt.provider === 'local') {
+      window.codeflow.getLocalStatus().then(setLocalSt)
+    }
+  }, [settings?.stt.provider, settings?.stt.localModel])
 
   const update = async (key: string, value: unknown) => {
     setSettings(await window.codeflow.setSetting(key, value))
@@ -153,6 +172,14 @@ export default function App() {
     setOllamaMsg('Testing…')
     const r = await window.codeflow.testProvider('ollama')
     setOllamaMsg(r.message)
+  }
+  const downloadLocal = async () => {
+    setLocalBusy(true)
+    setLocalMsg('Starting…')
+    const r = await window.codeflow.ensureLocal()
+    setLocalBusy(false)
+    setLocalSt({ engine: r.engine, model: r.model })
+    setLocalMsg(r.ok ? 'Ready ✓ — offline transcription is set up.' : `Error: ${r.message}`)
   }
 
   return (
@@ -238,10 +265,40 @@ export default function App() {
         <label className="field">
           <span>Speech-to-text</span>
           <select value={settings.stt.provider} onChange={(e) => update('stt.provider', e.target.value)}>
-            <option value="groq">Groq — whisper-large-v3-turbo (fast, cheap)</option>
-            <option value="openai">OpenAI — gpt-4o-transcribe</option>
+            <option value="groq">Groq — whisper-large-v3-turbo (cloud, fast)</option>
+            <option value="openai">OpenAI — gpt-4o-transcribe (cloud)</option>
+            <option value="local">Local — whisper.cpp (offline, no key)</option>
           </select>
         </label>
+
+        {settings.stt.provider === 'local' && (
+          <div className="subfields">
+            <label className="field">
+              <span>Local model (English)</span>
+              <select value={settings.stt.localModel} onChange={(e) => update('stt.localModel', e.target.value)}>
+                <option value="ggml-tiny.en-q5_1.bin">Tiny.en (~30 MB) — fastest</option>
+                <option value="ggml-base.en-q5_1.bin">Base.en (~60 MB) — balanced</option>
+                <option value="ggml-small.en-q5_1.bin">Small.en (~190 MB) — best accuracy</option>
+              </select>
+            </label>
+            <p className="state">
+              Engine{' '}
+              <strong className={localSt?.engine ? 'ok' : 'muted'}>{localSt?.engine ? '✓' : '—'}</strong>
+              {'  ·  '}Model{' '}
+              <strong className={localSt?.model ? 'ok' : 'muted'}>{localSt?.model ? '✓' : '—'}</strong>
+            </p>
+            <div className="row">
+              <button className="primary" onClick={downloadLocal} disabled={localBusy}>
+                {localSt?.engine && localSt?.model ? 'Verify / re-download' : 'Download model'}
+              </button>
+              {localMsg && <span className="hint">{localMsg}</span>}
+            </div>
+            <p className="hint">
+              Runs 100% offline on your CPU. First use downloads the whisper.cpp engine + model
+              (~{settings.stt.localModel.includes('small') ? '190' : settings.stt.localModel.includes('base') ? '60' : '30'} MB) to your machine.
+            </p>
+          </div>
+        )}
 
         <label className="check">
           <input type="checkbox" checked={settings.llm.enabled} onChange={(e) => update('llm.enabled', e.target.checked)} />

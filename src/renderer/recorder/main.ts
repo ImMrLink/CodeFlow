@@ -1,4 +1,5 @@
-// Hidden window that owns the microphone and records audio clips on command.
+// Hidden window that owns the microphone. Records, then decodes to 16 kHz mono
+// and sends a WAV buffer to main — the format both cloud STT and local whisper.cpp accept.
 const log = (m: string) => window.codeflow.recorderLog(m)
 
 let stream: MediaStream | null = null
@@ -25,6 +26,51 @@ async function ensureStream(): Promise<MediaStream> {
   return stream
 }
 
+/** Decode the recorded blob and resample to 16 kHz mono Float32. */
+async function toPcm16kMono(blob: Blob): Promise<Float32Array> {
+  const arr = await blob.arrayBuffer()
+  const ctx = new AudioContext()
+  const decoded = await ctx.decodeAudioData(arr)
+  await ctx.close()
+  const frames = Math.max(1, Math.ceil(decoded.duration * 16000))
+  const offline = new OfflineAudioContext(1, frames, 16000)
+  const src = offline.createBufferSource()
+  src.buffer = decoded
+  src.connect(offline.destination)
+  src.start()
+  const rendered = await offline.startRendering()
+  return rendered.getChannelData(0)
+}
+
+/** Encode Float32 samples as a 16-bit PCM WAV. */
+function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {
+  const buffer = new ArrayBuffer(44 + samples.length * 2)
+  const view = new DataView(buffer)
+  const writeStr = (o: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i))
+  }
+  writeStr(0, 'RIFF')
+  view.setUint32(4, 36 + samples.length * 2, true)
+  writeStr(8, 'WAVE')
+  writeStr(12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true) // PCM
+  view.setUint16(22, 1, true) // mono
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true)
+  view.setUint16(32, 2, true)
+  view.setUint16(34, 16, true)
+  writeStr(36, 'data')
+  view.setUint32(40, samples.length * 2, true)
+  let o = 44
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]))
+    view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+    o += 2
+  }
+  return buffer
+}
+
 window.codeflow.onRecord(async (cmd) => {
   try {
     if (cmd.action === 'start') {
@@ -43,16 +89,21 @@ window.codeflow.onRecord(async (cmd) => {
       const r = recorder
       recorder = null
       if (!r) {
-        log('no active recorder; sending empty')
         window.codeflow.sendAudio(new ArrayBuffer(0), '')
         return
       }
       const mime = r.mimeType
       r.onstop = async () => {
-        const blob = new Blob(chunks, { type: mime })
-        const buf = await blob.arrayBuffer()
-        log(`recording stopped, sending ${buf.byteLength} bytes`)
-        window.codeflow.sendAudio(buf, mime)
+        try {
+          const blob = new Blob(chunks, { type: mime })
+          const pcm = await toPcm16kMono(blob)
+          const wav = encodeWav(pcm, 16000)
+          log(`encoded 16kHz WAV: ${wav.byteLength} bytes`)
+          window.codeflow.sendAudio(wav, 'audio/wav')
+        } catch (e) {
+          log(`WAV encode failed: ${(e as Error).message}`)
+          window.codeflow.recorderError((e as Error).message)
+        }
       }
       r.stop()
     } else if (cmd.action === 'cancel') {

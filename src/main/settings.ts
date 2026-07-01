@@ -18,9 +18,10 @@ export interface SettingsSchema {
     pttModifiers: ModifierName[]
   }
   stt: {
-    provider: 'groq' | 'openai'
+    provider: 'groq' | 'openai' | 'local'
     groqModel: string
     openaiModel: string
+    localModel: string // whisper.cpp ggml filename, e.g. ggml-small.en-q5_1.bin
     language: string // 'auto' or an ISO code
   }
   llm: {
@@ -42,6 +43,7 @@ const store = new Store<SettingsSchema>({
       provider: 'groq',
       groqModel: 'whisper-large-v3-turbo',
       openaiModel: 'gpt-4o-transcribe',
+      localModel: 'ggml-small.en-q5_1.bin',
       language: 'auto'
     },
     llm: {

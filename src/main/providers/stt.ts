@@ -56,6 +56,9 @@ async function transcribeOpenAICompatible(
 export function buildSttEngine(): SttEngine {
   const cfg = getSection('stt')
   const provider = cfg.provider
+  if (provider === 'local') {
+    throw new Error('Local STT is handled by whisper.cpp, not this factory')
+  }
   const apiKey = getSecret(provider)
   if (!apiKey) {
     throw new Error(`No ${provider.toUpperCase()} API key set (open Settings → API keys)`)

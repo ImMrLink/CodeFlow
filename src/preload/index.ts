@@ -16,6 +16,15 @@ const api = {
   getHistory: () => ipcRenderer.invoke('history:get'),
   clearHistory: () => ipcRenderer.invoke('history:clear'),
   copyText: (text: string) => ipcRenderer.invoke('clipboard:write', text),
+  getLocalStatus: () => ipcRenderer.invoke('local:status'),
+  ensureLocal: () => ipcRenderer.invoke('local:ensure'),
+  onLocalProgress: (cb: (msg: string) => void) => {
+    const listener = (_e: unknown, msg: string) => cb(msg)
+    ipcRenderer.on('local:progress', listener)
+    return () => {
+      ipcRenderer.removeListener('local:progress', listener)
+    }
+  },
 
   // Pipeline status (settings window)
   onStatus: (cb: (s: StatusPayload) => void) => {

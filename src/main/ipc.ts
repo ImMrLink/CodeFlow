@@ -2,6 +2,7 @@ import { ipcMain, app, clipboard } from 'electron'
 import * as settings from './settings'
 import { testProviderKey, testOllama, type ProviderName } from './providers/health'
 import { getHistory, clearHistory } from './history'
+import { ensureReady, localStatus } from './providers/localWhisper'
 
 export interface IpcDeps {
   /** Called when hotkey chord, activation mode, or autostart settings change. */
@@ -56,5 +57,17 @@ export function registerIpc(deps: IpcDeps = {}): void {
   ipcMain.handle('clipboard:write', (_e, text: string) => {
     clipboard.writeText(text)
     return true
+  })
+
+  ipcMain.handle('local:status', () => localStatus(settings.getSection('stt').localModel))
+
+  ipcMain.handle('local:ensure', async (e) => {
+    const model = settings.getSection('stt').localModel
+    try {
+      await ensureReady(model, (msg) => e.sender.send('local:progress', msg))
+      return { ok: true, ...localStatus(model) }
+    } catch (err) {
+      return { ok: false, message: (err as Error).message, ...localStatus(model) }
+    }
   })
 }
