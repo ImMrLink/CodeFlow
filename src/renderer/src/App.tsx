@@ -1,58 +1,111 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 interface AppInfo {
   name: string
   version: string
   electron: string
   node: string
-  chrome: string
   platform: string
   encryptionAvailable: boolean
 }
 
 interface PublicSettings {
   general: { launchOnStartup: boolean; activationMode: string }
-  providers: { stt: string; llm: string }
+  hotkey: { pttModifiers: string[] }
+  stt: { provider: 'groq' | 'openai'; groqModel: string; openaiModel: string; language: string }
+  llm: { enabled: boolean; provider: 'openai' | 'groq'; openaiModel: string; groqModel: string }
   secretNames: string[]
 }
 
-const SECRET_NAME = 'anthropic'
+type StatusPayload = { state: string; message?: string }
+
+const STATUS_LABEL: Record<string, string> = {
+  idle: 'Idle',
+  listening: 'Listening…',
+  transcribing: 'Transcribing…',
+  formatting: 'Formatting…',
+  injecting: 'Pasting…',
+  done: 'Done',
+  error: 'Error'
+}
+
+function KeyRow(props: { name: string; label: string; hint: string; stored: boolean; onChanged: () => void }) {
+  const { name, label, hint, stored, onChanged } = props
+  const [val, setVal] = useState('')
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const save = async () => {
+    if (!val.trim()) return
+    await window.codeflow.setSecret(name, val.trim())
+    setVal('')
+    setMsg('Saved — encrypted with the OS keystore.')
+    onChanged()
+  }
+  const test = async () => {
+    setBusy(true)
+    setMsg('Testing…')
+    const r = await window.codeflow.testProvider(name)
+    setMsg(r.message)
+    setBusy(false)
+  }
+  const clear = async () => {
+    await window.codeflow.clearSecret(name)
+    setMsg('Cleared.')
+    onChanged()
+  }
+
+  return (
+    <div className="keyrow">
+      <div className="keyrow-head">
+        <strong>{label}</strong>
+        <span className={stored ? 'ok' : 'muted'}>{stored ? '● stored' : '○ not set'}</span>
+      </div>
+      <div className="row">
+        <input
+          type="password"
+          placeholder={stored ? '•••••••• (stored)' : hint}
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+        />
+        <button className="primary" onClick={save} disabled={!val.trim()}>Save</button>
+        <button onClick={test} disabled={!stored || busy}>Test</button>
+        <button onClick={clear} disabled={!stored}>Clear</button>
+      </div>
+      {msg && <p className="hint">{msg}</p>}
+    </div>
+  )
+}
 
 export default function App() {
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [settings, setSettings] = useState<PublicSettings | null>(null)
-  const [apiKey, setApiKey] = useState('')
-  const [keyStored, setKeyStored] = useState(false)
-  const [status, setStatus] = useState<string>('')
+  const [status, setStatus] = useState<StatusPayload>({ state: 'idle' })
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setInfo(await window.codeflow.getAppInfo())
     setSettings(await window.codeflow.getSettings())
-    const s = await window.codeflow.getSecretStatus(SECRET_NAME)
-    setKeyStored(s.exists)
-  }
+  }, [])
 
   useEffect(() => {
     refresh()
-  }, [])
+    const off = window.codeflow.onStatus(setStatus)
+    return off
+  }, [refresh])
 
-  async function saveKey() {
-    if (!apiKey.trim()) return
-    try {
-      await window.codeflow.setSecret(SECRET_NAME, apiKey.trim())
-      setApiKey('')
-      setStatus('Saved — encrypted with the OS keystore (DPAPI).')
-      await refresh()
-    } catch (err) {
-      setStatus(`Error: ${(err as Error).message}`)
-    }
+  const update = async (key: string, value: unknown) => {
+    setSettings(await window.codeflow.setSetting(key, value))
   }
 
-  async function clearKey() {
-    await window.codeflow.clearSecret(SECRET_NAME)
-    setStatus('Cleared.')
-    await refresh()
+  if (!settings || !info) {
+    return (
+      <div className="app">
+        <p>Loading…</p>
+      </div>
+    )
   }
+
+  const chord = settings.hotkey.pttModifiers.join(' + ')
 
   return (
     <div className="app">
@@ -65,64 +118,80 @@ export default function App() {
         </div>
         <div>
           <h1>CodeFlow</h1>
-          <p className="tagline">AI voice dictation for Windows — Phase 0 foundation</p>
+          <p className="tagline">Hold to talk — it types what you say, anywhere.</p>
+        </div>
+        <div className={`status ${status.state}`}>
+          <span className="dot" />
+          {STATUS_LABEL[status.state] ?? status.state}
         </div>
       </header>
 
-      <section className="card">
-        <h2>Environment</h2>
-        {info ? (
-          <dl className="grid">
-            <div><dt>App</dt><dd>{info.name} v{info.version}</dd></div>
-            <div><dt>Platform</dt><dd>{info.platform}</dd></div>
-            <div><dt>Electron</dt><dd>{info.electron}</dd></div>
-            <div><dt>Chromium</dt><dd>{info.chrome}</dd></div>
-            <div><dt>Node</dt><dd>{info.node}</dd></div>
-            <div>
-              <dt>OS encryption</dt>
-              <dd className={info.encryptionAvailable ? 'ok' : 'warn'}>
-                {info.encryptionAvailable ? 'available' : 'unavailable'}
-              </dd>
-            </div>
-          </dl>
-        ) : (
-          <p>Loading…</p>
+      <section className="card how">
+        <h2>How to dictate</h2>
+        <p>
+          Hold <kbd>{chord.split(' + ')[0] || 'Ctrl'}</kbd> + <kbd>{chord.split(' + ')[1] || 'Alt'}</kbd>,
+          speak, then release. Press <kbd>Esc</kbd> to cancel. The cleaned text is pasted into whatever
+          app has focus.
+        </p>
+        {!settings.secretNames.includes('groq') && !settings.secretNames.includes('openai') && (
+          <p className="warn">⚠ Add an API key below before your first dictation.</p>
         )}
       </section>
 
       <section className="card">
-        <h2>Provider API key</h2>
+        <h2>API keys</h2>
         <p className="muted">
-          Stored encrypted via <code>safeStorage</code> — only the ciphertext is written to disk.
-          This proves the secure-settings path works end to end.
+          Stored encrypted via <code>safeStorage</code> — only ciphertext is written to disk.
         </p>
-        <div className="row">
-          <input
-            type="password"
-            placeholder={keyStored ? '•••••••• (a key is stored)' : 'Paste an Anthropic API key'}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-          <button className="primary" onClick={saveKey} disabled={!apiKey.trim()}>Save</button>
-          <button onClick={clearKey} disabled={!keyStored}>Clear</button>
-        </div>
-        <p className="state">
-          Status: <strong className={keyStored ? 'ok' : 'muted'}>{keyStored ? 'key stored' : 'no key stored'}</strong>
-          {status && <span className="hint"> — {status}</span>}
-        </p>
+        <KeyRow
+          name="groq"
+          label="Groq"
+          hint="gsk_… — speech-to-text (fast & cheap)"
+          stored={settings.secretNames.includes('groq')}
+          onChanged={refresh}
+        />
+        <KeyRow
+          name="openai"
+          label="OpenAI"
+          hint="sk-… — GPT cleanup (and optional STT)"
+          stored={settings.secretNames.includes('openai')}
+          onChanged={refresh}
+        />
       </section>
 
       <section className="card">
-        <h2>Current settings</h2>
-        {settings ? (
-          <pre>{JSON.stringify(settings, null, 2)}</pre>
-        ) : (
-          <p>Loading…</p>
+        <h2>Engines</h2>
+        <label className="field">
+          <span>Speech-to-text</span>
+          <select value={settings.stt.provider} onChange={(e) => update('stt.provider', e.target.value)}>
+            <option value="groq">Groq — whisper-large-v3-turbo (fast, cheap)</option>
+            <option value="openai">OpenAI — gpt-4o-transcribe</option>
+          </select>
+        </label>
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.llm.enabled}
+            onChange={(e) => update('llm.enabled', e.target.checked)}
+          />
+          <span>AI formatting — clean up the transcript (punctuation, filler removal, lists)</span>
+        </label>
+
+        {settings.llm.enabled && (
+          <label className="field">
+            <span>Cleanup model</span>
+            <select value={settings.llm.provider} onChange={(e) => update('llm.provider', e.target.value)}>
+              <option value="openai">OpenAI — gpt-4o-mini</option>
+              <option value="groq">Groq — llama-3.3-70b</option>
+            </select>
+          </label>
         )}
       </section>
 
       <footer className="footer">
-        Runs in the system tray. Close this window and it hides; use the tray icon to reopen or quit.
+        {info.name} v{info.version} · Electron {info.electron} · {info.platform} · OS encryption{' '}
+        {info.encryptionAvailable ? 'available' : 'unavailable'} · lives in the system tray
       </footer>
     </div>
   )

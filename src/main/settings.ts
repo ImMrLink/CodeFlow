@@ -1,19 +1,33 @@
 import Store from 'electron-store'
 import { safeStorage } from 'electron'
 
+export type ModifierName = 'Ctrl' | 'Alt' | 'Shift' | 'Meta'
+
 /**
  * Persistent settings. Non-secret values are stored in plaintext via electron-store.
- * Secrets (API keys) are encrypted with the OS keystore (Windows DPAPI) via safeStorage
- * and only the base64 ciphertext is written to disk.
+ * Secrets (API keys) are encrypted with the OS keystore (Windows DPAPI) via safeStorage;
+ * only the base64 ciphertext is written to disk.
  */
 export interface SettingsSchema {
   general: {
     launchOnStartup: boolean
     activationMode: 'push-to-talk' | 'toggle'
   }
-  providers: {
-    stt: string
-    llm: string
+  hotkey: {
+    /** Modifiers that must all be held for push-to-talk. */
+    pttModifiers: ModifierName[]
+  }
+  stt: {
+    provider: 'groq' | 'openai'
+    groqModel: string
+    openaiModel: string
+    language: string // 'auto' or an ISO code
+  }
+  llm: {
+    enabled: boolean
+    provider: 'openai' | 'groq'
+    openaiModel: string
+    groqModel: string
   }
   secrets: Record<string, string> // name -> base64 ciphertext
 }
@@ -21,19 +35,34 @@ export interface SettingsSchema {
 const store = new Store<SettingsSchema>({
   defaults: {
     general: { launchOnStartup: false, activationMode: 'push-to-talk' },
-    providers: { stt: 'groq', llm: 'anthropic' },
+    hotkey: { pttModifiers: ['Ctrl', 'Alt'] },
+    stt: {
+      provider: 'groq',
+      groqModel: 'whisper-large-v3-turbo',
+      openaiModel: 'gpt-4o-transcribe',
+      language: 'auto'
+    },
+    llm: {
+      enabled: true,
+      provider: 'openai',
+      openaiModel: 'gpt-4o-mini',
+      groqModel: 'llama-3.3-70b-versatile'
+    },
     secrets: {}
   }
 })
 
-/** Renderer-safe view of settings: never exposes secret ciphertext, only the names present. */
+export function getSection<K extends keyof SettingsSchema>(key: K): SettingsSchema[K] {
+  return store.get(key)
+}
+
+/** Renderer-safe view: never exposes secret ciphertext, only which names exist. */
 export function getPublicSettings() {
   const { secrets, ...rest } = store.store
   return { ...rest, secretNames: Object.keys(secrets ?? {}) }
 }
 
 export function setValue(key: string, value: unknown): void {
-  // key is a dot-path, e.g. "providers.stt"
   store.set(key, value as never)
 }
 

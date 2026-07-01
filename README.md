@@ -11,9 +11,19 @@ runnable with **either local models or cloud API keys**.
 
 ## Status
 
-🚧 **Phase 0 — foundation.** The Electron + TypeScript app boots to the system tray, with an
-`electron-store` settings layer and API keys encrypted via the OS keystore (`safeStorage` / Windows
-DPAPI). See the full roadmap in [`docs/PLAN.md`](docs/PLAN.md).
+🚧 **Phase 1 — dictation loop (cloud).** Hold **Ctrl + Alt**, speak, release: CodeFlow records the
+mic, transcribes via **Groq** (or OpenAI), optionally cleans the text with **GPT**, and pastes it into
+the focused app. A bottom-center overlay shows listening/transcribing state; `Esc` cancels. Providers
+and API keys are set in Settings (keys encrypted via `safeStorage` / Windows DPAPI). See the roadmap
+in [`docs/PLAN.md`](docs/PLAN.md).
+
+### Using it
+
+1. `npm run dev`, then open **Settings** from the tray icon.
+2. Paste a **Groq** API key (speech-to-text) and, for cleanup, an **OpenAI** key. Hit **Test**.
+3. Focus any text field, **hold Ctrl + Alt**, speak, and release. The text is pasted in.
+
+> Windows must allow microphone access for desktop apps (Settings → Privacy & security → Microphone).
 
 ## Stack
 

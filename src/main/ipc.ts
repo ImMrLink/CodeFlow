@@ -1,8 +1,13 @@
 import { ipcMain, app } from 'electron'
 import * as settings from './settings'
+import { testProviderKey, type ProviderName } from './providers/health'
+
+export interface IpcDeps {
+  onHotkeyChanged?: () => void
+}
 
 /** Registers all main-process IPC handlers exposed to the renderer via the preload bridge. */
-export function registerIpc(): void {
+export function registerIpc(deps: IpcDeps = {}): void {
   ipcMain.handle('app:info', () => ({
     name: app.getName(),
     version: app.getVersion(),
@@ -17,6 +22,7 @@ export function registerIpc(): void {
 
   ipcMain.handle('settings:set', (_e, key: string, value: unknown) => {
     settings.setValue(key, value)
+    if (key.startsWith('hotkey')) deps.onHotkeyChanged?.()
     return settings.getPublicSettings()
   })
 
@@ -33,4 +39,6 @@ export function registerIpc(): void {
     settings.clearSecret(name)
     return { ok: true, exists: false }
   })
+
+  ipcMain.handle('provider:test', (_e, name: ProviderName) => testProviderKey(name))
 }
