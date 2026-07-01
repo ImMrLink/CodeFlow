@@ -70,7 +70,7 @@ function createSettingsWindow(): void {
     show: false,
     frame: false,
     title: 'CodeFlow',
-    icon: resourcePath('CodeFlow.png'),
+    icon: resourcePath('CodeFlow.ico'),
     backgroundColor: '#161513',
     autoHideMenuBar: true,
     webPreferences: {

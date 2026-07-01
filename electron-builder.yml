@@ -14,7 +14,7 @@ extraResources:
       - "**/*.ico"
 win:
   target: nsis
-  icon: resources/CodeFlow.png
+  icon: resources/CodeFlow.ico
 nsis:
   oneClick: false
   perMachine: false
