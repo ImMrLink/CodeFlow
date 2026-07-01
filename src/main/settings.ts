@@ -83,6 +83,30 @@ function backfillDefaults(): void {
 }
 backfillDefaults()
 
+/** Provider names that can hold an API key (the only valid entries in `secrets`). */
+const KNOWN_SECRETS = ['groq', 'openai']
+
+/**
+ * Remove keys left behind by earlier builds: top-level keys not in the schema
+ * (e.g. a legacy `providers` object) and secrets for providers that no longer
+ * exist (e.g. `anthropic`). Purely cosmetic — nothing reads these — but it keeps
+ * config.json tidy and avoids leaking stale ciphertext.
+ */
+function pruneUnknown(): void {
+  const allowed = new Set(Object.keys(DEFAULTS))
+  for (const key of Object.keys(store.store)) {
+    if (!allowed.has(key)) store.delete(key as keyof SettingsSchema)
+  }
+  const secrets = store.get('secrets') as Record<string, string>
+  const kept = Object.fromEntries(
+    Object.entries(secrets ?? {}).filter(([name]) => KNOWN_SECRETS.includes(name))
+  )
+  if (Object.keys(kept).length !== Object.keys(secrets ?? {}).length) {
+    store.set('secrets', kept)
+  }
+}
+pruneUnknown()
+
 export function getSection<K extends keyof SettingsSchema>(key: K): SettingsSchema[K] {
   return store.get(key)
 }
