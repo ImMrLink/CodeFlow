@@ -25,9 +25,11 @@ export interface SettingsSchema {
   }
   llm: {
     enabled: boolean
-    provider: 'openai' | 'groq'
+    provider: 'openai' | 'groq' | 'ollama'
     openaiModel: string
     groqModel: string
+    ollamaModel: string
+    ollamaEndpoint: string
   }
   secrets: Record<string, string> // name -> base64 ciphertext
 }
@@ -46,7 +48,9 @@ const store = new Store<SettingsSchema>({
       enabled: true,
       provider: 'openai',
       openaiModel: 'gpt-4o-mini',
-      groqModel: 'llama-3.3-70b-versatile'
+      groqModel: 'llama-3.3-70b-versatile',
+      ollamaModel: 'llama3.2',
+      ollamaEndpoint: 'http://localhost:11434'
     },
     secrets: {}
   }

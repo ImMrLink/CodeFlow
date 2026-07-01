@@ -1,6 +1,6 @@
 import { ipcMain, app, clipboard } from 'electron'
 import * as settings from './settings'
-import { testProviderKey, type ProviderName } from './providers/health'
+import { testProviderKey, testOllama, type ProviderName } from './providers/health'
 import { getHistory, clearHistory } from './history'
 
 export interface IpcDeps {
@@ -42,7 +42,10 @@ export function registerIpc(deps: IpcDeps = {}): void {
     return { ok: true, exists: false }
   })
 
-  ipcMain.handle('provider:test', (_e, name: ProviderName) => testProviderKey(name))
+  ipcMain.handle('provider:test', (_e, name: string) => {
+    if (name === 'ollama') return testOllama(settings.getSection('llm').ollamaEndpoint)
+    return testProviderKey(name as ProviderName)
+  })
 
   ipcMain.handle('history:get', () => getHistory())
   ipcMain.handle('history:clear', () => {

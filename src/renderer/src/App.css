@@ -159,8 +159,10 @@ kbd {
   display: flex;
   gap: 8px;
 }
-input[type='password'] {
+input[type='password'],
+input[type='text'] {
   flex: 1;
+  width: 100%;
   padding: 9px 12px;
   border-radius: 9px;
   border: 1px solid var(--card-border);
@@ -168,8 +170,19 @@ input[type='password'] {
   color: var(--text);
   outline: none;
 }
-input[type='password']:focus {
+input[type='password']:focus,
+input[type='text']:focus {
   border-color: var(--indigo-hi);
+}
+
+.subfields {
+  margin: 4px 0 6px;
+  padding: 12px 14px;
+  border: 1px dashed var(--card-border);
+  border-radius: 10px;
+}
+.subfields .row {
+  align-items: center;
 }
 
 button {

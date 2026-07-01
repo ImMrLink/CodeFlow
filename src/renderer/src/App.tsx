@@ -12,7 +12,14 @@ interface PublicSettings {
   general: { launchOnStartup: boolean; activationMode: string }
   hotkey: { pttModifiers: string[] }
   stt: { provider: 'groq' | 'openai'; groqModel: string; openaiModel: string; language: string }
-  llm: { enabled: boolean; provider: 'openai' | 'groq'; openaiModel: string; groqModel: string }
+  llm: {
+    enabled: boolean
+    provider: 'openai' | 'groq' | 'ollama'
+    openaiModel: string
+    groqModel: string
+    ollamaModel: string
+    ollamaEndpoint: string
+  }
   secretNames: string[]
 }
 
@@ -97,6 +104,7 @@ export default function App() {
   const [settings, setSettings] = useState<PublicSettings | null>(null)
   const [status, setStatus] = useState<StatusPayload>({ state: 'idle' })
   const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [ollamaMsg, setOllamaMsg] = useState('')
 
   const loadHistory = useCallback(async () => {
     setHistory(await window.codeflow.getHistory())
@@ -141,6 +149,11 @@ export default function App() {
 
   const copy = (text: string) => void window.codeflow.copyText(text)
   const clearHist = async () => setHistory(await window.codeflow.clearHistory())
+  const testOllama = async () => {
+    setOllamaMsg('Testing…')
+    const r = await window.codeflow.testProvider('ollama')
+    setOllamaMsg(r.message)
+  }
 
   return (
     <div className="app">
@@ -239,10 +252,41 @@ export default function App() {
           <label className="field">
             <span>Cleanup model</span>
             <select value={settings.llm.provider} onChange={(e) => update('llm.provider', e.target.value)}>
-              <option value="openai">OpenAI — gpt-4o-mini</option>
-              <option value="groq">Groq — llama-3.3-70b</option>
+              <option value="openai">OpenAI — gpt-4o-mini (cloud)</option>
+              <option value="groq">Groq — llama-3.3-70b (cloud)</option>
+              <option value="ollama">Ollama — local (offline, no key)</option>
             </select>
           </label>
+        )}
+
+        {settings.llm.enabled && settings.llm.provider === 'ollama' && (
+          <div className="subfields">
+            <label className="field">
+              <span>Ollama model</span>
+              <input
+                type="text"
+                value={settings.llm.ollamaModel}
+                onChange={(e) => update('llm.ollamaModel', e.target.value)}
+                placeholder="llama3.2"
+              />
+            </label>
+            <label className="field">
+              <span>Ollama endpoint</span>
+              <input
+                type="text"
+                value={settings.llm.ollamaEndpoint}
+                onChange={(e) => update('llm.ollamaEndpoint', e.target.value)}
+                placeholder="http://localhost:11434"
+              />
+            </label>
+            <div className="row">
+              <button onClick={testOllama}>Test Ollama</button>
+              {ollamaMsg && <span className="hint">{ollamaMsg}</span>}
+            </div>
+            <p className="hint">
+              Runs fully offline. Install Ollama, then pull a model: <code>ollama pull {settings.llm.ollamaModel || 'llama3.2'}</code>
+            </p>
+          </div>
         )}
       </section>
 
