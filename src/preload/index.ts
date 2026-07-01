@@ -5,6 +5,18 @@ type OverlayPayload = { state: string; message?: string }
 type RecorderCommand = { action: 'start' | 'stop' | 'cancel' }
 
 const api = {
+  // Frameless window controls
+  minimizeWindow: () => ipcRenderer.send('window:minimize'),
+  toggleMaximizeWindow: () => ipcRenderer.send('window:toggle-maximize'),
+  closeWindow: () => ipcRenderer.send('window:close'),
+  onMaximizeChange: (cb: (maximized: boolean) => void) => {
+    const listener = (_e: unknown, maximized: boolean) => cb(maximized)
+    ipcRenderer.on('window:maximized', listener)
+    return () => {
+      ipcRenderer.removeListener('window:maximized', listener)
+    }
+  },
+
   // App / settings
   getAppInfo: () => ipcRenderer.invoke('app:info'),
   getSettings: () => ipcRenderer.invoke('settings:getAll'),

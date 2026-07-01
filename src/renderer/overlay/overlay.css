@@ -3,87 +3,175 @@ body {
   margin: 0;
   background: transparent;
   overflow: hidden;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
   -webkit-user-select: none;
   user-select: none;
+}
+
+:root {
+  --accent: #c93a22;
 }
 
 .pill {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 12px auto 0;
+  margin: 14px auto 0;
   width: max-content;
-  max-width: 250px;
-  padding: 9px 16px;
+  max-width: 320px;
+  padding: 10px 18px;
   border-radius: 999px;
-  background: rgba(20, 20, 34, 0.92);
+  background: rgba(20, 19, 17, 0.9);
+  backdrop-filter: blur(14px);
   color: #fff;
-  font-size: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
 
 .pill.hidden {
   display: none;
 }
 
-.glyph {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 16px;
-}
-.glyph i {
-  display: block;
-  width: 3px;
-  height: 6px;
-  border-radius: 2px;
-  background: #8b83ff;
+.pill.error {
+  background: rgba(186, 47, 35, 0.94);
 }
 
-.pill.listening .glyph i {
-  animation: bar 0.8s ease-in-out infinite;
+/* indicators — hidden by default, shown per state */
+.ind {
+  display: none;
+  align-items: center;
+  height: 16px;
+  flex: none;
 }
-.pill.listening .glyph i:nth-child(2) {
+.pill.listening .wave,
+.pill.transcribing .think,
+.pill.formatting .dots,
+.pill.pasting .check,
+.pill.done .check {
+  display: flex;
+}
+
+/* waveform (listening) */
+.wave {
+  gap: 3px;
+}
+.wave i {
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: cfwave 0.8s ease-in-out infinite;
+}
+.wave i:nth-child(2) {
+  animation-duration: 0.6s;
+  animation-delay: 0.1s;
+}
+.wave i:nth-child(3) {
+  animation-duration: 0.9s;
+  animation-delay: 0.2s;
+}
+.wave i:nth-child(4) {
+  animation-duration: 0.7s;
+  animation-delay: 0.05s;
+}
+.wave i:nth-child(5) {
+  animation-duration: 1s;
   animation-delay: 0.15s;
 }
-.pill.listening .glyph i:nth-child(3) {
+
+/* thinking shimmer (transcribing) */
+.think {
+  gap: 3px;
+  animation: cfshimmer 1.3s ease-in-out infinite;
+}
+.think i {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.think i:nth-child(odd) {
+  height: 6px;
+}
+.think i:nth-child(even) {
+  height: 10px;
+}
+
+/* bouncing dots (formatting) */
+.dots {
+  gap: 4px;
+}
+.dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: cfdot 0.9s ease-in-out infinite;
+}
+.dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.dots i:nth-child(3) {
   animation-delay: 0.3s;
 }
-@keyframes bar {
-  0%,
-  100% {
-    height: 5px;
-  }
-  50% {
-    height: 15px;
-  }
-}
 
-.pill.processing .glyph i {
-  background: #f5c451;
-  animation: pulse 1s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.pill.error {
-  background: rgba(122, 26, 26, 0.95);
-}
-.pill.error .glyph {
-  display: none;
+/* check (pasting / done) */
+.check svg {
+  animation: cfpop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 #label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@keyframes cfwave {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@keyframes cfshimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes cfdot {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+@keyframes cfpop {
+  0% {
+    transform: scale(0.3);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+  }
 }

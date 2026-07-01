@@ -17,6 +17,8 @@ export interface PipelineStatus {
 export class Pipeline {
   private busy = false
   private aborted = false
+  private listenStart = 0
+  private speakMs = 0
 
   constructor(
     private recorder: Recorder,
@@ -35,6 +37,7 @@ export class Pipeline {
     }
     this.busy = true
     this.aborted = false
+    this.listenStart = Date.now()
     dbg('[pipeline] begin -> listening')
     this.overlay.set('listening', 'Listening…')
     this.status('listening')
@@ -47,7 +50,9 @@ export class Pipeline {
       return
     }
     dbg('[pipeline] finish -> stopping recorder')
-    this.overlay.set('processing', 'Transcribing…')
+    // speaking window = press-to-release; captured before transcription work.
+    this.speakMs = this.listenStart ? Date.now() - this.listenStart : 0
+    this.overlay.set('transcribing', 'Transcribing…')
     this.status('transcribing')
 
     const clip = await this.recorder.stop()
@@ -63,7 +68,7 @@ export class Pipeline {
         engineId = `local:${sttCfg.localModel}`
         dbg('[pipeline] transcribing locally (whisper.cpp)')
         text = await transcribeLocal(clip.buffer, sttCfg.localModel, (msg) =>
-          this.overlay.set('processing', msg)
+          this.overlay.set('transcribing', msg)
         )
       } else {
         const stt = buildSttEngine()
@@ -76,7 +81,7 @@ export class Pipeline {
       if (!text) return this.fail('No speech detected')
 
       if (getSection('llm').enabled) {
-        this.overlay.set('processing', 'Formatting…')
+        this.overlay.set('formatting', 'Formatting…')
         this.status('formatting')
         try {
           text = await buildLlmEngine().clean(text)
@@ -87,12 +92,14 @@ export class Pipeline {
       }
       if (this.aborted) return this.reset()
 
+      this.overlay.set('pasting', 'Pasting…')
       this.status('injecting')
       dbg('[pipeline] injecting text')
       await injectText(text)
-      addHistory(text, engineId)
-      this.overlay.set('hidden')
+      addHistory(text, engineId, this.speakMs)
+      this.overlay.set('done', 'Done')
       this.status('done', text.slice(0, 100))
+      setTimeout(() => this.overlay.set('hidden'), 700)
       dbg('[pipeline] done')
     } catch (e) {
       this.fail((e as Error).message)

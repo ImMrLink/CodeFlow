@@ -1,6 +1,13 @@
 import { BrowserWindow, screen } from 'electron'
 
-export type OverlayState = 'hidden' | 'listening' | 'processing' | 'error'
+export type OverlayState =
+  | 'hidden'
+  | 'listening'
+  | 'transcribing'
+  | 'formatting'
+  | 'pasting'
+  | 'done'
+  | 'error'
 
 /** Controls the bottom-center "Flow Bar" indicator window. */
 export class Overlay {

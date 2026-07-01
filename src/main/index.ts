@@ -63,11 +63,14 @@ function createSettingsWindow(): void {
     return
   }
   settingsWindow = new BrowserWindow({
-    width: 780,
-    height: 720,
+    width: 960,
+    height: 704,
+    minWidth: 720,
+    minHeight: 560,
     show: false,
+    frame: false,
     title: 'CodeFlow',
-    backgroundColor: '#0f1020',
+    backgroundColor: '#161513',
     autoHideMenuBar: true,
     webPreferences: {
       preload: PRELOAD,
@@ -82,14 +85,19 @@ function createSettingsWindow(): void {
       settingsWindow?.hide()
     }
   })
+  // Keep the custom title-bar maximize icon in sync.
+  const sendMaxState = (maximized: boolean): void =>
+    settingsWindow?.webContents.send('window:maximized', maximized)
+  settingsWindow.on('maximize', () => sendMaxState(true))
+  settingsWindow.on('unmaximize', () => sendMaxState(false))
   settingsWindow.once('ready-to-show', () => settingsWindow?.show())
   loadRenderer(settingsWindow, 'index')
 }
 
 function createOverlayWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 280,
-    height: 68,
+    width: 360,
+    height: 72,
     show: false,
     frame: false,
     transparent: true,

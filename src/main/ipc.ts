@@ -1,4 +1,4 @@
-import { ipcMain, app, clipboard } from 'electron'
+import { ipcMain, app, clipboard, BrowserWindow } from 'electron'
 import * as settings from './settings'
 import { testProviderKey, testOllama, type ProviderName } from './providers/health'
 import { getHistory, clearHistory } from './history'
@@ -58,6 +58,17 @@ export function registerIpc(deps: IpcDeps = {}): void {
     clipboard.writeText(text)
     return true
   })
+
+  // Custom title-bar window controls (the settings window is frameless).
+  ipcMain.on('window:minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minimize())
+  ipcMain.on('window:toggle-maximize', (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    if (!win) return
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  })
+  // Close hides to tray, matching the window's own close handler.
+  ipcMain.on('window:close', (e) => BrowserWindow.fromWebContents(e.sender)?.hide())
 
   ipcMain.handle('local:status', () => localStatus(settings.getSection('stt').localModel))
 
