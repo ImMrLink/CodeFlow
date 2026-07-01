@@ -4,6 +4,7 @@ import { buildSttEngine } from './providers/stt'
 import { buildLlmEngine } from './providers/llm'
 import { injectText } from './inject'
 import { getSection } from './settings'
+import { addHistory } from './history'
 import { dbg } from './debug'
 
 export interface PipelineStatus {
@@ -56,6 +57,7 @@ export class Pipeline {
     try {
       const stt = buildSttEngine()
       dbg(`[pipeline] transcribing via ${stt.id}`)
+      const engineId = stt.id
       let text = (await stt.transcribe(clip.buffer, clip.mime)).text
       dbg(`[pipeline] transcript: ${text.length} chars`)
       if (this.aborted) return this.reset()
@@ -76,6 +78,7 @@ export class Pipeline {
       this.status('injecting')
       dbg('[pipeline] injecting text')
       await injectText(text)
+      addHistory(text, engineId)
       this.overlay.set('hidden')
       this.status('done', text.slice(0, 100))
       dbg('[pipeline] done')
@@ -84,6 +87,12 @@ export class Pipeline {
     } finally {
       this.busy = false
     }
+  }
+
+  /** Hands-free mode: first press starts, next press finishes. */
+  toggle(): void {
+    if (this.busy) void this.finish()
+    else this.begin()
   }
 
   cancel(): void {

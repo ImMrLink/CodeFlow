@@ -1,9 +1,11 @@
-import { ipcMain, app } from 'electron'
+import { ipcMain, app, clipboard } from 'electron'
 import * as settings from './settings'
 import { testProviderKey, type ProviderName } from './providers/health'
+import { getHistory, clearHistory } from './history'
 
 export interface IpcDeps {
-  onHotkeyChanged?: () => void
+  /** Called when hotkey chord, activation mode, or autostart settings change. */
+  onInputConfigChanged?: () => void
 }
 
 /** Registers all main-process IPC handlers exposed to the renderer via the preload bridge. */
@@ -22,7 +24,7 @@ export function registerIpc(deps: IpcDeps = {}): void {
 
   ipcMain.handle('settings:set', (_e, key: string, value: unknown) => {
     settings.setValue(key, value)
-    if (key.startsWith('hotkey')) deps.onHotkeyChanged?.()
+    if (key.startsWith('hotkey') || key.startsWith('general')) deps.onInputConfigChanged?.()
     return settings.getPublicSettings()
   })
 
@@ -41,4 +43,15 @@ export function registerIpc(deps: IpcDeps = {}): void {
   })
 
   ipcMain.handle('provider:test', (_e, name: ProviderName) => testProviderKey(name))
+
+  ipcMain.handle('history:get', () => getHistory())
+  ipcMain.handle('history:clear', () => {
+    clearHistory()
+    return getHistory()
+  })
+
+  ipcMain.handle('clipboard:write', (_e, text: string) => {
+    clipboard.writeText(text)
+    return true
+  })
 }

@@ -4,7 +4,6 @@ interface AppInfo {
   name: string
   version: string
   electron: string
-  node: string
   platform: string
   encryptionAvailable: boolean
 }
@@ -15,6 +14,14 @@ interface PublicSettings {
   stt: { provider: 'groq' | 'openai'; groqModel: string; openaiModel: string; language: string }
   llm: { enabled: boolean; provider: 'openai' | 'groq'; openaiModel: string; groqModel: string }
   secretNames: string[]
+}
+
+interface HistoryEntry {
+  id: string
+  at: number
+  text: string
+  chars: number
+  engine: string
 }
 
 type StatusPayload = { state: string; message?: string }
@@ -29,48 +36,56 @@ const STATUS_LABEL: Record<string, string> = {
   error: 'Error'
 }
 
+const MODS = [
+  { v: 'Ctrl', label: 'Ctrl' },
+  { v: 'Alt', label: 'Alt' },
+  { v: 'Shift', label: 'Shift' },
+  { v: 'Meta', label: 'Win' }
+]
+
+const label = (m: string) => (m === 'Meta' ? 'Win' : m)
+
 function KeyRow(props: { name: string; label: string; hint: string; stored: boolean; onChanged: () => void }) {
-  const { name, label, hint, stored, onChanged } = props
   const [val, setVal] = useState('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
 
   const save = async () => {
     if (!val.trim()) return
-    await window.codeflow.setSecret(name, val.trim())
+    await window.codeflow.setSecret(props.name, val.trim())
     setVal('')
     setMsg('Saved — encrypted with the OS keystore.')
-    onChanged()
+    props.onChanged()
   }
   const test = async () => {
     setBusy(true)
     setMsg('Testing…')
-    const r = await window.codeflow.testProvider(name)
+    const r = await window.codeflow.testProvider(props.name)
     setMsg(r.message)
     setBusy(false)
   }
   const clear = async () => {
-    await window.codeflow.clearSecret(name)
+    await window.codeflow.clearSecret(props.name)
     setMsg('Cleared.')
-    onChanged()
+    props.onChanged()
   }
 
   return (
     <div className="keyrow">
       <div className="keyrow-head">
-        <strong>{label}</strong>
-        <span className={stored ? 'ok' : 'muted'}>{stored ? '● stored' : '○ not set'}</span>
+        <strong>{props.label}</strong>
+        <span className={props.stored ? 'ok' : 'muted'}>{props.stored ? '● stored' : '○ not set'}</span>
       </div>
       <div className="row">
         <input
           type="password"
-          placeholder={stored ? '•••••••• (stored)' : hint}
+          placeholder={props.stored ? '•••••••• (stored)' : props.hint}
           value={val}
           onChange={(e) => setVal(e.target.value)}
         />
         <button className="primary" onClick={save} disabled={!val.trim()}>Save</button>
-        <button onClick={test} disabled={!stored || busy}>Test</button>
-        <button onClick={clear} disabled={!stored}>Clear</button>
+        <button onClick={test} disabled={!props.stored || busy}>Test</button>
+        <button onClick={clear} disabled={!props.stored}>Clear</button>
       </div>
       {msg && <p className="hint">{msg}</p>}
     </div>
@@ -81,17 +96,26 @@ export default function App() {
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [settings, setSettings] = useState<PublicSettings | null>(null)
   const [status, setStatus] = useState<StatusPayload>({ state: 'idle' })
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+
+  const loadHistory = useCallback(async () => {
+    setHistory(await window.codeflow.getHistory())
+  }, [])
 
   const refresh = useCallback(async () => {
     setInfo(await window.codeflow.getAppInfo())
     setSettings(await window.codeflow.getSettings())
-  }, [])
+    await loadHistory()
+  }, [loadHistory])
 
   useEffect(() => {
     refresh()
-    const off = window.codeflow.onStatus(setStatus)
+    const off = window.codeflow.onStatus((s) => {
+      setStatus(s)
+      if (s.state === 'done') void loadHistory()
+    })
     return off
-  }, [refresh])
+  }, [refresh, loadHistory])
 
   const update = async (key: string, value: unknown) => {
     setSettings(await window.codeflow.setSetting(key, value))
@@ -105,7 +129,18 @@ export default function App() {
     )
   }
 
-  const chord = settings.hotkey.pttModifiers.join(' + ')
+  const mods = settings.hotkey.pttModifiers
+  const chord = mods.map(label).join(' + ')
+  const isToggle = settings.general.activationMode === 'toggle'
+
+  const toggleMod = (v: string) => {
+    const next = mods.includes(v) ? mods.filter((x) => x !== v) : [...mods, v]
+    if (next.length === 0) return // keep at least one modifier
+    void update('hotkey.pttModifiers', next)
+  }
+
+  const copy = (text: string) => void window.codeflow.copyText(text)
+  const clearHist = async () => setHistory(await window.codeflow.clearHistory())
 
   return (
     <div className="app">
@@ -126,16 +161,54 @@ export default function App() {
         </div>
       </header>
 
-      <section className="card how">
-        <h2>How to dictate</h2>
-        <p>
-          Hold <kbd>{chord.split(' + ')[0] || 'Ctrl'}</kbd> + <kbd>{chord.split(' + ')[1] || 'Alt'}</kbd>,
-          speak, then release. Press <kbd>Esc</kbd> to cancel. The cleaned text is pasted into whatever
-          app has focus.
+      <section className="card">
+        <h2>Activation</h2>
+        <label className="field">
+          <span>Mode</span>
+          <select
+            value={settings.general.activationMode}
+            onChange={(e) => update('general.activationMode', e.target.value)}
+          >
+            <option value="push-to-talk">Push-to-talk (hold the keys)</option>
+            <option value="toggle">Hands-free (press to start, press to stop)</option>
+          </select>
+        </label>
+
+        <div className="field">
+          <span>Hotkey</span>
+          <div className="chips">
+            {MODS.map((m) => (
+              <button
+                key={m.v}
+                className={`chip ${mods.includes(m.v) ? 'on' : ''}`}
+                onClick={() => toggleMod(m.v)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <p className="how">
+          {isToggle ? (
+            <>Press <kbd>{chord}</kbd> to start, press again to stop.</>
+          ) : (
+            <>Hold <kbd>{chord}</kbd>, speak, then release.</>
+          )}{' '}
+          <kbd>Esc</kbd> cancels. Text is pasted into the focused app.
         </p>
-        {!settings.secretNames.includes('groq') && !settings.secretNames.includes('openai') && (
-          <p className="warn">⚠ Add an API key below before your first dictation.</p>
+        {mods.includes('Meta') && (
+          <p className="warn">⚠ The Win key can trigger the Start menu — Ctrl/Alt/Shift combos are safer.</p>
         )}
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.general.launchOnStartup}
+            onChange={(e) => update('general.launchOnStartup', e.target.checked)}
+          />
+          <span>Launch CodeFlow at login <span className="muted">(applies to the installed app)</span></span>
+        </label>
       </section>
 
       <section className="card">
@@ -143,20 +216,8 @@ export default function App() {
         <p className="muted">
           Stored encrypted via <code>safeStorage</code> — only ciphertext is written to disk.
         </p>
-        <KeyRow
-          name="groq"
-          label="Groq"
-          hint="gsk_… — speech-to-text (fast & cheap)"
-          stored={settings.secretNames.includes('groq')}
-          onChanged={refresh}
-        />
-        <KeyRow
-          name="openai"
-          label="OpenAI"
-          hint="sk-… — GPT cleanup (and optional STT)"
-          stored={settings.secretNames.includes('openai')}
-          onChanged={refresh}
-        />
+        <KeyRow name="groq" label="Groq" hint="gsk_… — speech-to-text (fast & cheap)" stored={settings.secretNames.includes('groq')} onChanged={refresh} />
+        <KeyRow name="openai" label="OpenAI" hint="sk-… — GPT cleanup (and optional STT)" stored={settings.secretNames.includes('openai')} onChanged={refresh} />
       </section>
 
       <section className="card">
@@ -170,11 +231,7 @@ export default function App() {
         </label>
 
         <label className="check">
-          <input
-            type="checkbox"
-            checked={settings.llm.enabled}
-            onChange={(e) => update('llm.enabled', e.target.checked)}
-          />
+          <input type="checkbox" checked={settings.llm.enabled} onChange={(e) => update('llm.enabled', e.target.checked)} />
           <span>AI formatting — clean up the transcript (punctuation, filler removal, lists)</span>
         </label>
 
@@ -186,6 +243,32 @@ export default function App() {
               <option value="groq">Groq — llama-3.3-70b</option>
             </select>
           </label>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h2>History</h2>
+          {history.length > 0 && (
+            <button className="link" onClick={clearHist}>Clear all</button>
+          )}
+        </div>
+        {history.length === 0 ? (
+          <p className="muted">No dictations yet.</p>
+        ) : (
+          <ul className="history">
+            {history.map((h) => (
+              <li key={h.id}>
+                <div className="h-text">{h.text}</div>
+                <div className="h-meta">
+                  <span>
+                    {new Date(h.at).toLocaleTimeString()} · {h.chars} chars
+                  </span>
+                  <button onClick={() => copy(h.text)}>Copy</button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

@@ -13,6 +13,9 @@ const api = {
   getSecretStatus: (name: string) => ipcRenderer.invoke('secret:status', name),
   clearSecret: (name: string) => ipcRenderer.invoke('secret:clear', name),
   testProvider: (name: string) => ipcRenderer.invoke('provider:test', name),
+  getHistory: () => ipcRenderer.invoke('history:get'),
+  clearHistory: () => ipcRenderer.invoke('history:clear'),
+  copyText: (text: string) => ipcRenderer.invoke('clipboard:write', text),
 
   // Pipeline status (settings window)
   onStatus: (cb: (s: StatusPayload) => void) => {

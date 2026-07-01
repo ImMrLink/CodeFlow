@@ -21,20 +21,30 @@ function modifierOf(keycode: number): ModifierName | null {
  * Emits 'start' when all required modifiers are held, 'stop' on release, 'cancel' on Esc.
  * Non-modifier keys are never inspected or logged.
  */
+export type ActivationMode = 'push-to-talk' | 'toggle'
+
 export class HotkeyManager extends EventEmitter {
   private down: Record<ModifierName, boolean> = { Ctrl: false, Alt: false, Shift: false, Meta: false }
   private required: ModifierName[]
+  private mode: ActivationMode
   private engaged = false
   private hooked = false
 
-  constructor(required: ModifierName[]) {
+  constructor(required: ModifierName[], mode: ActivationMode = 'push-to-talk') {
     super()
     this.required = required.length ? required : ['Ctrl', 'Alt']
+    this.mode = mode
   }
 
   setChord(required: ModifierName[]): void {
     this.required = required.length ? required : ['Ctrl', 'Alt']
     dbg(`[hotkey] chord set to ${this.required.join('+')}`)
+  }
+
+  setMode(mode: ActivationMode): void {
+    this.mode = mode
+    this.engaged = false
+    dbg(`[hotkey] activation mode set to ${mode}`)
   }
 
   start(): void {
@@ -80,12 +90,19 @@ export class HotkeyManager extends EventEmitter {
     const active = this.required.every((m) => this.down[m])
     if (active && !this.engaged) {
       this.engaged = true
-      dbg(`[hotkey] chord ENGAGED (${this.required.join('+')}) -> start`)
-      this.emit('start')
+      if (this.mode === 'toggle') {
+        dbg(`[hotkey] chord (${this.required.join('+')}) -> toggle`)
+        this.emit('toggle')
+      } else {
+        dbg(`[hotkey] chord ENGAGED (${this.required.join('+')}) -> start`)
+        this.emit('start')
+      }
     } else if (!active && this.engaged) {
       this.engaged = false
-      dbg('[hotkey] chord released -> stop')
-      this.emit('stop')
+      if (this.mode === 'push-to-talk') {
+        dbg('[hotkey] chord released -> stop')
+        this.emit('stop')
+      }
     }
   }
 }

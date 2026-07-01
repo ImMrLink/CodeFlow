@@ -243,6 +243,84 @@ code {
   font-size: 12px;
 }
 
+/* chips (hotkey modifiers) */
+.chips {
+  display: flex;
+  gap: 8px;
+}
+.chip {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: #10101d;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 600;
+}
+.chip:hover {
+  border-color: var(--indigo-hi);
+}
+.chip.on {
+  background: var(--indigo);
+  border-color: var(--indigo);
+  color: #fff;
+}
+
+/* card header with action */
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.card-head h2 {
+  margin: 0;
+}
+button.link {
+  background: none;
+  border: none;
+  color: var(--indigo-hi);
+  padding: 0;
+  font-size: 13px;
+}
+button.link:hover {
+  text-decoration: underline;
+}
+
+/* history list */
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.history li {
+  background: #10101d;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.h-text {
+  line-height: 1.5;
+  word-break: break-word;
+}
+.h-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.h-meta button {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 .footer {
   color: var(--muted);
   font-size: 12px;

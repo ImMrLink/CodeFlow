@@ -43,6 +43,19 @@ function setupPermissions(): void {
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => allow(permission))
 }
 
+function applyLoginItem(openAtLogin: boolean): void {
+  if (!app.isPackaged) return // don't register the dev electron binary at login
+  app.setLoginItemSettings({ openAtLogin, args: [] })
+}
+
+function applyInputConfig(): void {
+  const g = getSection('general')
+  const h = getSection('hotkey')
+  hotkeys?.setChord(h.pttModifiers)
+  hotkeys?.setMode(g.activationMode)
+  applyLoginItem(g.launchOnStartup)
+}
+
 function createSettingsWindow(): void {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.show()
@@ -161,15 +174,15 @@ if (!gotLock) {
     const recorder = new Recorder(recorderWindow)
     pipeline = new Pipeline(recorder, overlay, broadcastStatus)
 
-    hotkeys = new HotkeyManager(getSection('hotkey').pttModifiers)
+    hotkeys = new HotkeyManager(getSection('hotkey').pttModifiers, getSection('general').activationMode)
     hotkeys.on('start', () => pipeline?.begin())
     hotkeys.on('stop', () => void pipeline?.finish())
+    hotkeys.on('toggle', () => pipeline?.toggle())
     hotkeys.on('cancel', () => pipeline?.cancel())
     hotkeys.start()
+    applyLoginItem(getSection('general').launchOnStartup)
 
-    registerIpc({
-      onHotkeyChanged: () => hotkeys?.setChord(getSection('hotkey').pttModifiers)
-    })
+    registerIpc({ onInputConfigChanged: applyInputConfig })
 
     createTray()
     createSettingsWindow()
