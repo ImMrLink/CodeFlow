@@ -70,6 +70,7 @@ function createSettingsWindow(): void {
     show: false,
     frame: false,
     title: 'CodeFlow',
+    icon: resourcePath('CodeFlow.ico'),
     backgroundColor: '#161513',
     autoHideMenuBar: true,
     webPreferences: {
@@ -139,7 +140,7 @@ function createRecorderWindow(): BrowserWindow {
 }
 
 function createTray(): void {
-  const image = nativeImage.createFromPath(resourcePath('tray.png'))
+  const image = nativeImage.createFromPath(resourcePath('CodeFlow.ico'))
   tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image)
   tray.setToolTip('CodeFlow — hold Ctrl+Alt to dictate')
   const menu = Menu.buildFromTemplate([
