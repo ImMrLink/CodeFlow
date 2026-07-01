@@ -35,28 +35,53 @@ export interface SettingsSchema {
   secrets: Record<string, string> // name -> base64 ciphertext
 }
 
-const store = new Store<SettingsSchema>({
-  defaults: {
-    general: { launchOnStartup: false, activationMode: 'push-to-talk' },
-    hotkey: { pttModifiers: ['Ctrl', 'Alt'] },
-    stt: {
-      provider: 'groq',
-      groqModel: 'whisper-large-v3-turbo',
-      openaiModel: 'gpt-4o-transcribe',
-      localModel: 'ggml-small.en-q5_1.bin',
-      language: 'auto'
-    },
-    llm: {
-      enabled: true,
-      provider: 'openai',
-      openaiModel: 'gpt-4o-mini',
-      groqModel: 'llama-3.3-70b-versatile',
-      ollamaModel: 'llama3.2',
-      ollamaEndpoint: 'http://localhost:11434'
-    },
-    secrets: {}
+const DEFAULTS: SettingsSchema = {
+  general: { launchOnStartup: false, activationMode: 'push-to-talk' },
+  hotkey: { pttModifiers: ['Ctrl', 'Alt'] },
+  stt: {
+    provider: 'groq',
+    groqModel: 'whisper-large-v3-turbo',
+    openaiModel: 'gpt-4o-transcribe',
+    localModel: 'ggml-small.en-q5_1.bin',
+    language: 'auto'
+  },
+  llm: {
+    enabled: true,
+    provider: 'openai',
+    openaiModel: 'gpt-4o-mini',
+    groqModel: 'llama-3.3-70b-versatile',
+    ollamaModel: 'llama3.2',
+    ollamaEndpoint: 'http://localhost:11434'
+  },
+  secrets: {}
+}
+
+const store = new Store<SettingsSchema>({ defaults: DEFAULTS })
+
+/**
+ * electron-store only shallow-merges top-level defaults, so a settings section
+ * persisted by an older build (e.g. an `stt` object saved before `localModel`
+ * existed) is missing keys added later — reading them yields `undefined`, which
+ * crashes both the renderer and the STT/LLM backends. Backfill any absent keys
+ * from DEFAULTS one level deep. Existing values (including secrets) are untouched.
+ */
+function backfillDefaults(): void {
+  for (const section of Object.keys(DEFAULTS) as (keyof SettingsSchema)[]) {
+    const def = DEFAULTS[section]
+    if (!def || typeof def !== 'object' || Array.isArray(def)) continue
+    const current = (store.get(section) ?? {}) as Record<string, unknown>
+    const merged = { ...current }
+    let changed = false
+    for (const [k, v] of Object.entries(def)) {
+      if (!(k in merged)) {
+        merged[k] = v
+        changed = true
+      }
+    }
+    if (changed) store.set(section, merged as never)
   }
-})
+}
+backfillDefaults()
 
 export function getSection<K extends keyof SettingsSchema>(key: K): SettingsSchema[K] {
   return store.get(key)

@@ -275,7 +275,7 @@ export default function App() {
           <div className="subfields">
             <label className="field">
               <span>Local model (English)</span>
-              <select value={settings.stt.localModel} onChange={(e) => update('stt.localModel', e.target.value)}>
+              <select value={settings.stt.localModel ?? 'ggml-small.en-q5_1.bin'} onChange={(e) => update('stt.localModel', e.target.value)}>
                 <option value="ggml-tiny.en-q5_1.bin">Tiny.en (~30 MB) — fastest</option>
                 <option value="ggml-base.en-q5_1.bin">Base.en (~60 MB) — balanced</option>
                 <option value="ggml-small.en-q5_1.bin">Small.en (~190 MB) — best accuracy</option>
@@ -295,7 +295,7 @@ export default function App() {
             </div>
             <p className="hint">
               Runs 100% offline on your CPU. First use downloads the whisper.cpp engine + model
-              (~{settings.stt.localModel.includes('small') ? '190' : settings.stt.localModel.includes('base') ? '60' : '30'} MB) to your machine.
+              (~{(settings.stt.localModel ?? '').includes('small') ? '190' : (settings.stt.localModel ?? '').includes('base') ? '60' : '30'} MB) to your machine.
             </p>
           </div>
         )}
