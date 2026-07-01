@@ -4,6 +4,7 @@ import { buildSttEngine } from './providers/stt'
 import { buildLlmEngine } from './providers/llm'
 import { injectText } from './inject'
 import { getSection } from './settings'
+import { dbg } from './debug'
 
 export interface PipelineStatus {
   state: 'idle' | 'listening' | 'transcribing' | 'formatting' | 'injecting' | 'done' | 'error'
@@ -26,26 +27,37 @@ export class Pipeline {
   }
 
   begin(): void {
-    if (this.busy) return
+    if (this.busy) {
+      dbg('[pipeline] begin ignored (already busy)')
+      return
+    }
     this.busy = true
     this.aborted = false
+    dbg('[pipeline] begin -> listening')
     this.overlay.set('listening', 'Listening…')
     this.status('listening')
     this.recorder.start()
   }
 
   async finish(): Promise<void> {
-    if (!this.busy) return
+    if (!this.busy) {
+      dbg('[pipeline] finish ignored (not busy)')
+      return
+    }
+    dbg('[pipeline] finish -> stopping recorder')
     this.overlay.set('processing', 'Transcribing…')
     this.status('transcribing')
 
     const clip = await this.recorder.stop()
+    dbg(`[pipeline] clip received: ${clip ? clip.buffer.length + ' bytes, ' + clip.mime : 'null'}`)
     if (this.aborted) return this.reset()
     if (!clip || clip.buffer.length < 1200) return this.fail('No audio captured')
 
     try {
       const stt = buildSttEngine()
+      dbg(`[pipeline] transcribing via ${stt.id}`)
       let text = (await stt.transcribe(clip.buffer, clip.mime)).text
+      dbg(`[pipeline] transcript: ${text.length} chars`)
       if (this.aborted) return this.reset()
       if (!text) return this.fail('No speech detected')
 
@@ -62,9 +74,11 @@ export class Pipeline {
       if (this.aborted) return this.reset()
 
       this.status('injecting')
+      dbg('[pipeline] injecting text')
       await injectText(text)
       this.overlay.set('hidden')
       this.status('done', text.slice(0, 100))
+      dbg('[pipeline] done')
     } catch (e) {
       this.fail((e as Error).message)
     } finally {

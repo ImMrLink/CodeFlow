@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain } from 'electron'
+import { dbg } from './debug'
 
 export interface AudioClip {
   buffer: Buffer
@@ -16,6 +17,7 @@ export class Recorder {
   constructor(win: BrowserWindow) {
     this.win = win
     ipcMain.on('recorder:audio', (_e, payload: { data: ArrayBuffer; mime: string }) => {
+      dbg(`[recorder] audio received: ${payload.data?.byteLength ?? 0} bytes (${payload.mime})`)
       this.resolve(
         payload.data && payload.data.byteLength > 0
           ? { buffer: Buffer.from(payload.data), mime: payload.mime }
@@ -23,8 +25,11 @@ export class Recorder {
       )
     })
     ipcMain.on('recorder:error', (_e, message: string) => {
-      console.error('[recorder]', message)
+      dbg(`[recorder] ERROR: ${message}`)
       this.resolve(null)
+    })
+    ipcMain.on('recorder:log', (_e, message: string) => {
+      dbg(`[recorder-renderer] ${message}`)
     })
   }
 
@@ -35,6 +40,7 @@ export class Recorder {
   }
 
   private send(action: 'start' | 'stop' | 'cancel'): void {
+    dbg(`[recorder] -> command '${action}' (win destroyed=${this.win.isDestroyed()})`)
     if (!this.win.isDestroyed()) this.win.webContents.send('recorder:command', { action })
   }
 
@@ -48,7 +54,10 @@ export class Recorder {
       this.send('stop')
       // safety timeout so the pipeline never hangs
       setTimeout(() => {
-        if (this.pending === resolve) this.resolve(null)
+        if (this.pending === resolve) {
+          dbg('[recorder] stop() timed out after 15s (no audio from renderer)')
+          this.resolve(null)
+        }
       }, 15000)
     })
   }

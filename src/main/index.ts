@@ -6,6 +6,7 @@ import { HotkeyManager } from './hotkey'
 import { Recorder } from './recorder'
 import { Overlay } from './overlay'
 import { Pipeline, type PipelineStatus } from './pipeline'
+import { initDebug, dbg, debugLogPath } from './debug'
 
 const RENDERER_DEV_URL = process.env.ELECTRON_RENDERER_URL
 const PRELOAD = join(__dirname, '..', 'preload', 'index.js')
@@ -145,10 +146,17 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     if (process.platform === 'win32') app.setAppUserModelId('ai.codeflow.app')
+    initDebug()
+    dbg(`[app] ready. renderer dev url=${RENDERER_DEV_URL ?? '(none, packaged)'}`)
     setupPermissions()
 
     overlayWindow = createOverlayWindow()
     recorderWindow = createRecorderWindow()
+    recorderWindow.webContents.on('did-finish-load', () => dbg('[recorder] window finished loading'))
+    recorderWindow.webContents.on('did-fail-load', (_e, code, desc, url) =>
+      dbg(`[recorder] window FAILED to load: ${code} ${desc} (${url})`)
+    )
+    overlayWindow.webContents.on('did-finish-load', () => dbg('[overlay] window finished loading'))
     const overlay = new Overlay(overlayWindow)
     const recorder = new Recorder(recorderWindow)
     pipeline = new Pipeline(recorder, overlay, broadcastStatus)
@@ -165,6 +173,7 @@ if (!gotLock) {
 
     createTray()
     createSettingsWindow()
+    dbg(`[app] startup complete. Debug log at: ${debugLogPath()}`)
   })
 
   // Tray app: keep the process alive when all windows are closed.

@@ -25,6 +25,10 @@ in [`docs/PLAN.md`](docs/PLAN.md).
 
 > Windows must allow microphone access for desktop apps (Settings → Privacy & security → Microphone).
 
+> **Troubleshooting:** after changing main-process code, fully restart (`npm run dev`) — a stale instance
+> won't pick up new hotkey/pipeline logic. For verbose diagnostics set `CODEFLOW_DEBUG=1` before launching;
+> it writes a step-by-step log to `%TEMP%\codeflow-debug.log` (off by default; never logs typed content).
+
 ## Stack
 
 Electron + TypeScript (React UI), built with `electron-vite`. See the plan for rationale,

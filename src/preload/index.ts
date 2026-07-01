@@ -29,6 +29,7 @@ const api = {
   },
   sendAudio: (data: ArrayBuffer, mime: string) => ipcRenderer.send('recorder:audio', { data, mime }),
   recorderError: (message: string) => ipcRenderer.send('recorder:error', message),
+  recorderLog: (message: string) => ipcRenderer.send('recorder:log', message),
 
   // Overlay window
   onOverlayState: (cb: (s: OverlayPayload) => void) => {
