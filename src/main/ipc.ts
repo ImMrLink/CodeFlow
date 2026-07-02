@@ -3,6 +3,8 @@ import * as settings from './settings'
 import { testProviderKey, testOllama, type ProviderName } from './providers/health'
 import { getHistory, clearHistory } from './history'
 import { ensureReady, localStatus } from './providers/localWhisper'
+import { getSnippets, addSnippet, deleteSnippet } from './snippets'
+import { getNotes, addNote, updateNote, deleteNote } from './notes'
 
 export interface IpcDeps {
   /** Called when hotkey chord, activation mode, or autostart settings change. */
@@ -69,6 +71,26 @@ export function registerIpc(deps: IpcDeps = {}): void {
   })
   // Close hides to tray, matching the window's own close handler.
   ipcMain.on('window:close', (e) => BrowserWindow.fromWebContents(e.sender)?.hide())
+
+  // Snippets
+  ipcMain.handle('snippets:get', () => getSnippets())
+  ipcMain.handle('snippets:add', (_e, trigger: string, text: string) => {
+    addSnippet(trigger, text)
+    return getSnippets()
+  })
+  ipcMain.handle('snippets:delete', (_e, id: string) => {
+    deleteSnippet(id)
+    return getSnippets()
+  })
+
+  // Scratchpad notes
+  ipcMain.handle('notes:get', () => getNotes())
+  ipcMain.handle('notes:add', (_e, body: string) => {
+    addNote(body ?? '')
+    return getNotes()
+  })
+  ipcMain.handle('notes:update', (_e, id: string, body: string) => updateNote(id, body))
+  ipcMain.handle('notes:delete', (_e, id: string) => deleteNote(id))
 
   ipcMain.handle('local:status', () => localStatus(settings.getSection('stt').localModel))
 

@@ -8,6 +8,16 @@ export interface HistoryEntry {
   words: number
   ms: number // speaking duration; 0 when unknown (older entries)
   engine: string
+  app: string // focused app at dictation time ('' when unknown)
+  fixes: number // word-level edits cleanup made
+  fillersRemoved: number
+}
+
+export interface HistoryMeta {
+  ms?: number
+  app?: string
+  fixes?: number
+  fillersRemoved?: number
 }
 
 interface HistorySchema {
@@ -28,7 +38,7 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
-export function addHistory(text: string, engine: string, ms = 0): void {
+export function addHistory(text: string, engine: string, meta: HistoryMeta = {}): void {
   const items = store.get('items')
   counter += 1
   const entry: HistoryEntry = {
@@ -37,8 +47,11 @@ export function addHistory(text: string, engine: string, ms = 0): void {
     text,
     chars: text.length,
     words: countWords(text),
-    ms: Math.max(0, Math.round(ms)),
-    engine
+    ms: Math.max(0, Math.round(meta.ms ?? 0)),
+    engine,
+    app: meta.app ?? '',
+    fixes: Math.max(0, Math.round(meta.fixes ?? 0)),
+    fillersRemoved: Math.max(0, Math.round(meta.fillersRemoved ?? 0))
   }
   store.set('items', [entry, ...items].slice(0, MAX_ITEMS))
 }
@@ -48,7 +61,10 @@ export function getHistory(): HistoryEntry[] {
   return store.get('items').map((e) => ({
     ...e,
     words: e.words ?? countWords(e.text),
-    ms: e.ms ?? 0
+    ms: e.ms ?? 0,
+    app: e.app ?? '',
+    fixes: e.fixes ?? 0,
+    fillersRemoved: e.fillersRemoved ?? 0
   }))
 }
 

@@ -74,6 +74,42 @@ export const IconSettings = ({ size = 15 }: P) =>
     </>
   ))
 
+export const IconInsights = ({ size = 15 }: P) =>
+  svg(size, 1.5, (
+    <>
+      <line x1="3.5" y1="13" x2="3.5" y2="9" />
+      <line x1="8" y1="13" x2="8" y2="4" />
+      <line x1="12.5" y1="13" x2="12.5" y2="7" />
+    </>
+  ))
+
+export const IconSnippets = ({ size = 15 }: P) =>
+  svg(size, 1.5, (
+    <>
+      <line x1="2.5" y1="4.5" x2="13.5" y2="4.5" />
+      <line x1="2.5" y1="8" x2="7.5" y2="8" />
+      <polyline points="10.5 6 13 8 10.5 10" />
+      <line x1="2.5" y1="11.5" x2="7.5" y2="11.5" />
+    </>
+  ))
+
+export const IconScratch = ({ size = 15 }: P) =>
+  svg(size, 1.5, (
+    <>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+      <path d="M5.5 10.5 10 6" />
+    </>
+  ))
+
+export const IconTrash = ({ size = 14 }: P) =>
+  svg(size, 1.4, (
+    <>
+      <path d="M3 4.5h10" />
+      <path d="M6.5 4.5V3h3v1.5" />
+      <rect x="4.5" y="4.5" width="7" height="9" rx="1" />
+    </>
+  ))
+
 export const IconHelp = ({ size = 15 }: P) =>
   svg(size, 1.5, (
     <>

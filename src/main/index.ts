@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, session } from 'electron'
+import { app, BrowserWindow, Tray, Menu, nativeImage, session, globalShortcut } from 'electron'
 import { join } from 'node:path'
 import { registerIpc } from './ipc'
 import { getSection } from './settings'
@@ -54,6 +54,30 @@ function applyInputConfig(): void {
   hotkeys?.setChord(h.pttModifiers)
   hotkeys?.setMode(g.activationMode)
   applyLoginItem(g.launchOnStartup)
+  applyScratchpadShortcut()
+}
+
+function openScratchpadNewNote(): void {
+  createSettingsWindow()
+  const w = settingsWindow
+  if (!w) return
+  w.show()
+  w.focus()
+  const send = (): void => w.webContents.send('scratchpad:new-note')
+  if (w.webContents.isLoading()) w.webContents.once('did-finish-load', send)
+  else send()
+}
+
+/** Global Ctrl+Shift+S to jump straight to a new scratchpad note (toggle in Settings). */
+function applyScratchpadShortcut(): void {
+  const accel = 'CommandOrControl+Shift+S'
+  globalShortcut.unregister(accel)
+  if (!getSection('general').scratchpadShortcut) return
+  try {
+    globalShortcut.register(accel, openScratchpadNewNote)
+  } catch (e) {
+    dbg('[shortcut] scratchpad shortcut failed: ' + (e as Error).message)
+  }
 }
 
 function createSettingsWindow(): void {
@@ -190,6 +214,7 @@ if (!gotLock) {
     hotkeys.on('cancel', () => pipeline?.cancel())
     hotkeys.start()
     applyLoginItem(getSection('general').launchOnStartup)
+    applyScratchpadShortcut()
 
     registerIpc({ onInputConfigChanged: applyInputConfig })
 
@@ -206,5 +231,6 @@ if (!gotLock) {
   app.on('before-quit', () => {
     isQuitting = true
     hotkeys?.stop()
+    globalShortcut.unregisterAll()
   })
 }

@@ -741,3 +741,246 @@ button {
   font: 400 12px var(--font-mono);
   color: var(--muted);
 }
+
+/* ---------- insights ---------- */
+.cf-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--hair);
+}
+.cf-tab {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px 10px;
+  font: 500 13px var(--font-ui);
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.cf-tab.on {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--ink);
+}
+.cf-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.15fr;
+  gap: 14px;
+  align-items: stretch;
+}
+.cf-grid-2 {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+.cf-ins-card {
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+}
+.cf-badge-up {
+  font: 600 11px var(--font-ui);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.cf-fixes {
+  border-top: 1px solid var(--hair);
+  margin-top: auto;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cf-fixes-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+.cf-mono-muted {
+  font: 500 12px var(--font-mono);
+  color: var(--muted);
+}
+.cf-card-foot {
+  border-top: 1px solid var(--hair);
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.cf-gauge-wrap {
+  position: relative;
+  align-self: center;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.cf-gauge-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  text-align: center;
+  font: 500 11.5px var(--font-ui);
+  color: var(--muted);
+}
+.cf-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+}
+.cf-bar-label {
+  font-size: 12.5px;
+  flex: none;
+  width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cf-bar-track {
+  height: 16px;
+  flex: 1;
+  background: var(--hover);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cf-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 6px;
+}
+.cf-bar-meta {
+  font: 500 11px var(--font-mono);
+  color: var(--muted);
+  flex: none;
+  text-align: right;
+  width: 96px;
+}
+.cf-heat {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
+  justify-content: start;
+}
+.cf-heat span {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+}
+.cf-heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+}
+.cf-heat-legend .sw {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+}
+
+/* ---------- snippets ---------- */
+.cf-snip-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  padding: 12px;
+  flex-wrap: wrap;
+}
+.cf-snip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--hair);
+}
+.cf-snip-trigger {
+  font: 700 12.5px var(--font-mono);
+  flex: none;
+  white-space: nowrap;
+}
+.cf-snip-text {
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+.cf-arrow {
+  color: var(--muted);
+  flex: none;
+}
+.cf-icon-btn.danger:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ---------- scratchpad ---------- */
+.cf-scratch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cf-beta {
+  font: 600 10px var(--font-ui);
+  background: var(--ink);
+  color: var(--panel);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.cf-note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.cf-note-textarea {
+  font: 400 13.5px var(--font-ui);
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--hair-strong);
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 180px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.cf-note-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--hair);
+  cursor: pointer;
+}
+.cf-note-row:hover {
+  background: var(--hover);
+}
+.cf-note-title {
+  font-size: 13.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cf-note-time {
+  font: 400 12px var(--font-mono);
+  color: var(--muted);
+  flex: none;
+}

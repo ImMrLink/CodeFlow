@@ -6,6 +6,9 @@ import { buildLlmEngine } from './providers/llm'
 import { injectText } from './inject'
 import { getSection } from './settings'
 import { addHistory } from './history'
+import { expandSnippets } from './snippets'
+import { computeFixes } from './textstats'
+import { getForegroundApp } from './foreground'
 import { dbg } from './debug'
 
 export interface PipelineStatus {
@@ -19,6 +22,7 @@ export class Pipeline {
   private aborted = false
   private listenStart = 0
   private speakMs = 0
+  private currentApp = ''
 
   constructor(
     private recorder: Recorder,
@@ -38,6 +42,13 @@ export class Pipeline {
     this.busy = true
     this.aborted = false
     this.listenStart = Date.now()
+    // Capture the focused app now (before our overlay/paste touches focus). Best-effort.
+    this.currentApp = ''
+    getForegroundApp()
+      .then((a) => {
+        this.currentApp = a
+      })
+      .catch(() => {})
     dbg('[pipeline] begin -> listening')
     this.overlay.set('listening', 'Listening…')
     this.status('listening')
@@ -80,11 +91,28 @@ export class Pipeline {
       if (this.aborted) return this.reset()
       if (!text) return this.fail('No speech detected')
 
-      if (getSection('llm').enabled) {
+      // Snippets: a whole-utterance trigger expands verbatim (skip cleanup);
+      // otherwise expand any inline triggers before cleanup.
+      let whole = false
+      try {
+        const exp = expandSnippets(text)
+        text = exp.text
+        whole = exp.whole
+      } catch (e) {
+        dbg(`[pipeline] snippet expansion skipped: ${(e as Error).message}`)
+      }
+
+      let fixes = 0
+      let fillersRemoved = 0
+      if (!whole && getSection('llm').enabled) {
         this.overlay.set('formatting', 'Formatting…')
         this.status('formatting')
+        const before = text
         try {
           text = await buildLlmEngine().clean(text)
+          const f = computeFixes(before, text)
+          fixes = f.fixes
+          fillersRemoved = f.fillersRemoved
         } catch (e) {
           // cleanup is best-effort; fall back to the raw transcript
           console.error('[pipeline] LLM cleanup failed, using raw text:', (e as Error).message)
@@ -96,7 +124,7 @@ export class Pipeline {
       this.status('injecting')
       dbg('[pipeline] injecting text')
       await injectText(text)
-      addHistory(text, engineId, this.speakMs)
+      addHistory(text, engineId, { ms: this.speakMs, app: this.currentApp, fixes, fillersRemoved })
       this.overlay.set('done', 'Done')
       this.status('done', text.slice(0, 100))
       setTimeout(() => this.overlay.set('hidden'), 700)

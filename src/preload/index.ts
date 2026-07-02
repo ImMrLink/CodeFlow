@@ -30,6 +30,24 @@ const api = {
   copyText: (text: string) => ipcRenderer.invoke('clipboard:write', text),
   getLocalStatus: () => ipcRenderer.invoke('local:status'),
   ensureLocal: () => ipcRenderer.invoke('local:ensure'),
+
+  // Snippets
+  getSnippets: () => ipcRenderer.invoke('snippets:get'),
+  addSnippet: (trigger: string, text: string) => ipcRenderer.invoke('snippets:add', trigger, text),
+  deleteSnippet: (id: string) => ipcRenderer.invoke('snippets:delete', id),
+
+  // Scratchpad notes
+  getNotes: () => ipcRenderer.invoke('notes:get'),
+  addNote: (body: string) => ipcRenderer.invoke('notes:add', body),
+  updateNote: (id: string, body: string) => ipcRenderer.invoke('notes:update', id, body),
+  deleteNote: (id: string) => ipcRenderer.invoke('notes:delete', id),
+  onScratchpadNewNote: (cb: () => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on('scratchpad:new-note', listener)
+    return () => {
+      ipcRenderer.removeListener('scratchpad:new-note', listener)
+    }
+  },
   onLocalProgress: (cb: (msg: string) => void) => {
     const listener = (_e: unknown, msg: string) => cb(msg)
     ipcRenderer.on('local:progress', listener)

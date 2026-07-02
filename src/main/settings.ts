@@ -12,6 +12,7 @@ export interface SettingsSchema {
   general: {
     launchOnStartup: boolean
     activationMode: 'push-to-talk' | 'toggle'
+    scratchpadShortcut: boolean // global Ctrl+Shift+S to open a new scratchpad note
   }
   hotkey: {
     /** Modifiers that must all be held for push-to-talk. */
@@ -36,7 +37,7 @@ export interface SettingsSchema {
 }
 
 const DEFAULTS: SettingsSchema = {
-  general: { launchOnStartup: false, activationMode: 'push-to-talk' },
+  general: { launchOnStartup: false, activationMode: 'push-to-talk', scratchpadShortcut: false },
   hotkey: { pttModifiers: ['Ctrl', 'Alt'] },
   stt: {
     provider: 'groq',
