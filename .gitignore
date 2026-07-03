@@ -41,3 +41,6 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Marketing site (maintained in a separate private repo)
+website/
